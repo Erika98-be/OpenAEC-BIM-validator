@@ -49,3 +49,6 @@ viewer/BCF_IMPLEMENTATION_PROMPT.md
 *.db
 *.db-shm
 *.db-wal
+
+# Native Rust build artifacts
+/target/

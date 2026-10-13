@@ -1,0 +1,13 @@
+OpenAEC style reference:
+https://github.com/OpenAEC-Foundation/OpenAEC-style-book
+Commit dfdcd415b26604081b1699560621d3e9ae7ea6bf
+brandbook/LAYOUTS.md sections 3.1 and 3.2
+packages/tokens/tokens/colors.json
+Fonts copied unchanged from project-templates/Tauri+React/src-tauri/tenants/openaec_foundation/fonts.
+Design documents: CC BY-SA 4.0; see OPENAEC-STYLE-LICENSE.
+Inter, Space Grotesk and JetBrains Mono: SIL Open Font License; individual notices included.
+IfcLite is linked as an unmodified MPL-2.0 Cargo dependency; see https://github.com/LTplus-AG/ifc-lite.
+
+openaec-symbol.png copied unchanged from brandbook/assets/logo/png/openaec-symbol-transparent-3x.png in the style repository above.
+View cube design/interaction reference: https://github.com/OpenAEC-Foundation/open-pointcloud-studio (13b199a), native/desktop/src/view_cube.rs. The egui control is independently implemented.
+pointcloud-core linked unmodified from OpenAEC-Foundation/open-pointcloud-studio commit 13b199a426e692d2149998b3f2f596a191568501, LGPL-3.0-or-later. Source URL and pinned revision are in native/Cargo.toml; see POINTCLOUD-CORE-LICENSE and POINTCLOUD-CORE-NOTICE. The Cargo build supports rebuilding and relinking this dependency from source.

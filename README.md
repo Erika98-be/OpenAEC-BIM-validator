@@ -1,446 +1,147 @@
-# IFC Validator Project - 3BM Bouwkunde
+# OpenAEC BIM Validator
 
-## Quick Start (Lokaal Testen)
+Native IFC-viewer en modelcontrole, volledig geschreven in Rust. De desktop-app gebruikt **egui/eframe** voor de interface, **OpenGL** voor 3D-rendering en **IfcLite 20.4.0** voor STEP/IFC-parsing en geometrie. Geen browser, webview, JavaScript- of Python-runtime nodig.
 
-```bash
-# 1. Maak virtual environment
-cd C:\IDS\test
-python -m venv venv
-venv\Scripts\activate
+Georeferentie: de importer gebruikt IfcLite RTC-offsets en bewaart wereldorigins in dubbele precisie. Rendering en selectie rekenen relatief aan lokale origins om diepteartefacten bij grote coördinaten te voorkomen.
 
-# 2. Installeer dependencies
-pip install ifcopenshell ifctester
+![Native Rust viewer met het CLT-testmodel](docs/native-viewer.png)
 
-# 3. Test of het werkt
-python test_ifctester.py
+## Status en richting
+
+Dit is een native desktopversie in ontwikkeling. De werkende functies staan hieronder; de uitbreiding naar de volledige ClashControl- en IfcLite-workflows wordt bijgehouden in het [functieoverzicht en werkplan](docs/FEATURE-PARITY.md). Zie ook de [architectuur](docs/ARCHITECTURE.md). Geplande integraties en voorbeeldextensions worden niet als beschikbare functies gepresenteerd.
+
+## Starten
+
+Installeer een recente stabiele Rust-toolchain en start vanuit de repository:
+
+```sh
+cargo run --release --locked
+# Direct een model openen:
+cargo run --release --locked -- test/2786_CLT_model.ifc
+# Zonder venster import en geometrie controleren:
+cargo run --release --locked -- --inspect test/fixtures/sample.ifc
 ```
 
-**Als de test slaagt → je kunt verder bouwen!**
+Linux vereist een grafische desktop, OpenGL 3.3, de X11/Wayland runtimebibliotheken en een desktopportal voor bestandsdialogen. De executable staat na `cargo build --release --locked` in `target/release/openaec-bim-validator` (Windows: `.exe`).
 
----
+## Werkruimte
 
-## Folder Structuur
+De bovenbalk groepeert acties in **Model → Beeld → Data → Controleren → Issues → Scans**. De 3D-weergave, modelboom en inspecteur delen één selectie. Data en issues gebruiken een vast onderpaneel; scans staan rechts. De gewone systeemtitelbalk, het Bestand-menu en native bestandsdialogen blijven behouden.
 
-```
-C:\IDS\
-├── README.md                      ← Dit bestand
-├── AUTO_CLAUDE_SETUP.md           ← Handleiding (lokaal, zonder git)
-├── CLAUDE.md                      ← Context voor Claude Code
-│
-├── test/                          ← 🆕 Test folder
-│   └── test_ifctester.py         ← Test script om te starten
-│
-├── ids-bestanden/                 ← IDS specificaties
-│   ├── NL_BIM_Basis_ILS_v2.ids   ← 13 checks, NL standaard
-│   └── RVB_BIM_Norm_v1.1.ids     ← 30 checks, Rijksvastgoed
-│
-├── claude-code/                   ← Development documentatie
-│   ├── PROJECT_CONTEXT.md        ← Volledige project info
-│   ├── ROADMAP.md                ← Fase planning
-│   ├── ARCHITECTURE_DECISIONS.md ← Technische beslissingen
-│   ├── specs/                    ← Specs per fase
-│   └── fixtures/                 ← Test bestanden
-│
-└── webpagina/                     ← UI mockup
-    └── index.html                ← 3BM branded preview
-```
 
----
+- Meerdere lokale IFC-modellen combineren; import op een achtergrondthread met voortgang en foutmeldingen.
+- Ruimtelijke modelboom, groepering op IFC-type, materiaal, classificatie en afgeleide discipline; zoeken op naam, GUID, type of STEP-id.
+- 3D-selectie, Ctrl-multiselect, zoom naar selectie, verbergen/isolereren en zichtbaarheid per model/object.
+- Orbit, pan, zoom, perspectief/orthografisch en isometrie/boven/voor/rechts.
+- Kleuren per IFC-type, monochroom, draadmodel, röntgen en driehoeksranden.
+- Doorsnedebox met zes begrenzingen; picking houdt rekening met doorsneden en verborgen objecten.
+- Afstanden en vlakke polygonen meten in meters/m²; zichtlijncontrole tussen twee gekozen punten.
+- IFC-attributen, propertysets, hoeveelheden, materialen en classificatie inspecteren.
+- Objecttabel met type-, tekst- en propertyfilters; numerieke vergelijkingen, selectie/isoleratie en CSV-export.
+- Twee geladen modelversies vergelijken op GlobalId: toegevoegd, verwijderd en gewijzigde metadata/meshes; JSON-export.
+- Zichtbare meshes exporteren als GLB en horizontale doorsneden als SVG.
+- Camera, doorsneden en zichtbaarheid opslaan als standpunt; `.oaec`-projecten verwijzen naar de originele IFC-bestanden.
+- Configureerbare modelkwaliteitscontroles met een auditbare score, en een gedeeltelijke IDS-evaluator met XML-editor; bevindingen zijn aanklikbaar in 3D.
+- Native IfcLite-clashcontrole op zichtbare meshes, met model-/typefilters, harde botsingen en minimumafstandregels; regels worden met het project opgeslagen.
+- Issuebeheer met vaste topic-ID, status, prioriteit, categorie, eigenaar en opmerkingen; herhaalruns behouden de beoordeling.
+- BCF 2.1/3.0-import en -export voor beheerde issues, inclusief camera, object-GUIDs, zichtbaarheid, snijvlakken en snapshots.
+- JSON-rapportage en lokale projectopslag van resultaten, issues en clashregels.
+- Puntenwolken (LAS/LAZ, PLY, PCD, XYZ, PTS, PTX en E57) via de Rust-kern van Open Pointcloud Studio; registratie, ICP, afwijkingsheatmap, hotspotissues en een PDF-overzicht.
+- Licht/donker thema en opgeslagen weergavevoorkeuren.
 
-## Stap-voor-Stap
-
-### Stap 1: Test de Basis
-```bash
-cd C:\IDS\test
-python -m venv venv
-venv\Scripts\activate
-pip install ifcopenshell ifctester
-python test_ifctester.py
-```
+**Bediening:** links slepen draait, rechts/midden slepen verschuift, scroll zoomt. Home toont het model, F zoomt de selectie, H verbergt en I isoleert. Ctrl+O opent IFC, Ctrl+S bewaart het project. Dubbelklik zoomt een object.
 
-### Stap 2: Test met Eigen IFC
-Plaats een `.ifc` bestand in `C:\IDS\test\` en run het script opnieuw.
+## Coördinatie gebruiken
 
-### Stap 3: Start Claude Code
-```bash
-cd C:\IDS
-claude
-```
-Claude leest automatisch `CLAUDE.md` en kent de context.
+1. Open IFC-modellen via **Bestand → IFC openen**. Gebruik de modelboom voor zichtbaarheid en de inspecteur voor objectgegevens.
+2. Kies **Controleren → Clashregels**. Stel groepen A/B in op model en eventueel een exact IFC-type. Kies harde botsingen of vrije ruimte en stel de afstanden in meters in. Zonder B-scope wordt A onderling gecontroleerd.
+3. Voer de controle uit en bekijk de resultaten in 3D. Kies **Issues → Uit resultaten** om bevindingen als duurzame issues vast te leggen; bestaande statussen en opmerkingen blijven behouden.
+4. Bewerk titel, status, eigenaar en prioriteit in **Issuebeheer**. **Actueel standpunt + snapshot vastleggen** bewaart het huidige beeld bij het topic.
+5. Importeer BCF via **Issues → BCF import**. Een bestaand topic met dezelfde GUID wordt behouden. Exporteer naar 2.1 of kies 3.0 in Issuebeheer. Zonder beheerde issues blijft de oorspronkelijke 2.1-export van bevindingen beschikbaar.
+6. Sla het `.oaec`-project op om standpunten, issues, resultaten en regels te bewaren. IFC-bestanden blijven losse bestanden en moeten bij heropenen beschikbaar zijn.
 
-### Stap 4: Bouw Verder
-Vraag Claude om te beginnen met Phase 1 volgens de specs.
+**Meten en zichtlijnen:** Afstand kiest twee punten. **Model → Oppervlak** voegt hoekpunten toe aan een vlakke polygoon; kies de punten in volgorde en gebruik Wis meting voor een nieuwe meting. De vlakheidstolerantie is 1 mm. Zichtlijn gebruikt de twee afstandspunten als oogpunt en doel en meldt tussenliggende zichtbare IFC-objecten; het is geen normtoets.
 
----
+**Lopen:** kies Lopen, klik in de viewport en gebruik W/A/S/D; Q/E beweegt verticaal. Slepen draait de kijkrichting. Orbit schakelt terug. Er is geen botsingsbeperking in loopmodus.
 
-## Geen Git Nodig
+## Scans en afwijkingen
 
-Je kunt volledig lokaal werken. Git is pas nodig als je:
-- Code wilt delen met anderen
-- Naar productie wilt deployen
-- Versiebeheer wilt
+Open **Scans → Puntenwolk openen** of gebruik het Bestand-menu. De parser is de ongewijzigde Rust-library `pointcloud-core` uit Open Pointcloud Studio, vastgezet op commit `13b199a426e692d2149998b3f2f596a191568501`.
 
-**Backup tip:** Kopieer werkende versies naar een backup folder.
+- **Puntenwolk in beeld** past de camera op de scan aan.
+- Voer drie overeenkomstige punten in meters in: originele scancoördinaten links, IFC-coördinaten rechts. **Registratie toepassen** bepaalt een rigide transformatie zonder schaalverandering.
+- **Registratie verfijnen (ICP)** gebruikt circa 5000 punten, maximaal 60 iteraties en alleen correspondenties binnen de ingestelde afwijkingsgrens. Dit vereist een goede beginregistratie.
+- **Afstand tot IFC berekenen** meet de kortste afstand tot zichtbare IFC-driehoeken. Groen ligt op het oppervlak; rood bereikt of overschrijdt de ingestelde grens. De afstand heeft geen teken.
+- Afwijkende punten worden via aangrenzende cellen van 0,5 m tot clusters samengevoegd. Maak daarvan issues of exporteer een PDF-overzicht met aantallen, maxima en coördinaten.
 
----
+**Grenzen:** maximaal twee miljoen punten worden ingelezen als steekproef. Zowel weergave als afwijkingscontrole gebruiken die punten; het aantal wordt naast het brontotaal getoond. Dit is nog geen out-of-core verwerking van de volledige scan. De PDF is een tekstoverzicht zonder snapshots per cluster. Projecten bewaren scanpaden en registraties; afwijkingen worden na heropenen opnieuw berekend. Disciplinegroepering is afgeleid van IFC-types, niet van een gecontroleerde disciplineclassificatie.
 
-## Nederlandse BIM Standaarden
+## Datakwaliteit en IDS
 
-De IFC Validator ondersteunt ingebouwde Nederlandse BIM standaarden, zodat je IFC-modellen kunt valideren zonder externe IDS-bestanden te zoeken.
+**Controleren → Kwaliteitsregels** voegt materiaal-, classificatie-, NL-SfB-aanwezigheids- en common-propertycontroles toe. De score is het aandeel geslaagde controles op objecten met geometrie; elke controle telt even zwaar. Een lege werkruimte krijgt geen perfecte score. De NL-SfB-controle controleert aanwezigheid, niet de geldigheid van de code in een officiële classificatietabel.
 
-### Beschikbare Standaard Shortcuts
+**IDS editor** opent, bewerkt en bewaart IDS-XML. Valideren gebruikt dezelfde gedeeltelijke evaluator als IDS openen. Gebruik de onderstaande beperkingen bij het interpreteren van resultaten.
 
-| Shortcut | Standaard | Beschrijving |
-|----------|-----------|--------------|
-| `--ids nl-bim` | NL_BIM Basis ILS v2 | Nederlandse basis informatieleveringsspecificatie |
-| `--ids rvb` | RVB BIM Norm v1.1 | Rijksvastgoedbedrijf BIM Norm voor rijkshuisvesting |
+## OpenAEC-vormgeving
 
-### Gebruik
+Het [goedgekeurde UI-ontwerp](docs/ui-design-reference.png) is vertaald naar native Rust-controls: een gegroepeerd pictogramlint, compacte modelboom met zichtbaarheidsknoppen, documentbalk, object-/beeld-/standpuntinspecteur en een filterbare resultatentabel onder het 3D-beeld. Het lichte thema is standaard; de zonknop wisselt naar donker. De viewport heeft een camera-afhankelijke oriëntatiekubus met aanklikbare vlakken, randen en hoeken, gebaseerd op de interactie in Open Pointcloud Studio, en zoomknoppen. De gewone systeemtitelbalk blijft behouden; de extra app-titelbalk is verwijderd. Bestand gebruikt een dropdownmenu en native bestandsdialogen. Paneelknoppen in de documentbalk tonen of verbergen de zijpanelen en resultaten.
 
-Valideer een IFC-bestand met een Nederlandse standaard:
+De voorbeeldarchitectuur in het ontwerpbeeld is geen meegeleverd IFC-model. De app en bovenstaande schermafbeelding tonen echte IFC-geometrie en gegevens. Afstand, vlakke oppervlaktemeting en lokaal issuebeheer zijn geïmplementeerd. Gedeelde projecten en externe connectoren staan nog op het werkplan.
 
-```bash
-# Valideren met NL_BIM Basis ILS
-python -m ifc_validator.cli mijn_model.ifc --ids nl-bim
+De native lay-out volgt [OpenAEC-style-book](https://github.com/OpenAEC-Foundation/OpenAEC-style-book), commit `dfdcd415b26604081b1699560621d3e9ae7ea6bf`, met name `brandbook/LAYOUTS.md` §3 en de design tokens. De menurij, amberaccenten, panelen en meegeleverde Inter-, Space Grotesk- en JetBrains Mono-fonts worden in Rust getekend. Zie `native/assets/` voor licenties en bronvermelding.
 
-# Valideren met RVB BIM Norm
-python -m ifc_validator.cli mijn_model.ifc --ids rvb
+## Validatie en grenzen
 
-# JSON output voor rapportage
-python -m ifc_validator.cli mijn_model.ifc --ids nl-bim --output json
+Dit is een nieuwe native viewer, **geen volledige Solibri-vervanger**. De geometrieondersteuning volgt IfcLite; geometriefouten en lege tessellaties worden zichtbaar gemeld. IFC2X3/IFC4/IFC4X3 STEP wordt geaccepteerd; IFCZIP en IFCXML worden niet geïmporteerd.
 
-# Eigen IDS-bestand gebruiken (blijft ook werken)
-python -m ifc_validator.cli mijn_model.ifc --ids pad/naar/eigen.ids
-```
-
-### NL_BIM Basis ILS v2
-
-De NL_BIM Basis ILS is de Nederlandse standaard informatieleveringsspecificatie voor BIM-modellen, ontwikkeld volgens de richtlijnen van BIM Loket. Deze baseline standaard zorgt voor consistente, uitwisselbare BIM-modellen in de Nederlandse bouwsector.
-
-#### Scope
-
-De standaard valideert modellen op drie hoofdgebieden:
-
-1. **Naamgevingsconventies** - Consistente naamgeving voor verdiepingen, deuren en andere elementen
-2. **Classificatie & Materialen** - NL/SfB classificatie en materiaalspecificaties
-3. **Technische eigenschappen** - Constructieve, thermische en brandtechnische eigenschappen
-
-#### Volledige Dekking (12 Specificaties)
-
-| Code | Specificatie | Wat wordt gecontroleerd |
-|------|-------------|------------------------|
-| 3.3 | Verdiepingsnaamgeving | Bouwlagen volgen patroon: -01, 00, 01, 02, etc. |
-| 3.4 | Vermijd IfcBuildingElementProxy | Geen proxy-elementen; gebruik correcte IFC-entiteiten |
-| 3.5 | Deurnaamgeving | Deuren volgen patroon: D-001, D-002, etc. |
-| 3.6 | NL/SfB Classificatie | Alle objecten hebben NL/SfB (4 cijfers) classificatie |
-| 4.1 | Ruimte attributen | IfcSpace bevat Name, LongName en NetFloorArea |
-| 4.3 | LoadBearing wanden | Wanden hebben LoadBearing property (TRUE/FALSE) |
-| 4.4 | IsExternal wanden | Wanden hebben IsExternal property (TRUE/FALSE) |
-| 4.5 | Brandwerendheid | Interne dragende wanden hebben FireRating (30/60/90/120) |
-| 4.6 | ThermalTransmittance | Externe wanden hebben U-waarde (W/m²K) |
-| 4.7.1 | Materiaal verplicht | Alle objecten hebben materiaal toegekend |
-| 4.7.2 | Materialen dragende wanden | Dragende wanden: Beton, Kalkzandsteen, Metselwerk of Staal |
-| 4.8 | Renovatiestatus MEP | MEP-elementen: Bestaand, Nieuw of Te slopen |
-
-#### Technische Details
-
-- **IFC Versies:** IFC2X3 en IFC4
-- **Aantal specificaties:** 12 checks
-- **Bron:** Gebaseerd op [BIM Basis ILS](https://www.bimloket.nl/p/223/BIM-basis-ILS) van BIM Loket
-- **PropertySets:** Pset_WallCommon, Qto_SpaceBaseQuantities, Pset_Condition
-
-#### Wanneer Gebruiken?
-
-Gebruik `--ids nl-bim` voor:
-- Algemene bouwprojecten in Nederland
-- Projecten die de BIM Basis ILS volgen
-- Initiële modelvalidatie voordat specifiekere normen worden toegepast
-- Controle van basisinformatie-uitwisseling tussen disciplines
-
-### RVB BIM Norm v1.1
-
-De RVB BIM Norm is de BIM standaard van het Rijksvastgoedbedrijf voor rijkshuisvestingsprojecten. Deze uitgebreide norm stelt hogere eisen dan de basis ILS en is specifiek ontwikkeld voor overheidsgebouwen en rijkshuisvesting.
-
-#### Scope
-
-De standaard valideert modellen op vijf hoofdgebieden:
-
-1. **Project & Locatie** - Projectgegevens, terreinlocatie met coördinaten, gebouwinformatie met RVB-nummering
-2. **Ruimtes & Zones** - Uitgebreide ruimteattributen, hoeveelheden, en zone-informatie
-3. **NL-SfB Classificatie** - Verplichte classificatie voor alle hoofdelementen (wanden, vloeren, daken, deuren, ramen, kolommen, balken, trappen)
-4. **Constructieve & Brandtechnische eigenschappen** - LoadBearing, IsExternal, FireRating, vluchtdeuren
-5. **Model kwaliteit** - Geen proxy-elementen, materiaal verplicht, meubilair classificatie
-
-#### Volledige Dekking (27 Specificaties)
-
-**Project & Locatie Informatie (4 specs)**
-
-| Code | Specificatie | Wat wordt gecontroleerd |
-|------|-------------|------------------------|
-| 2.2.7.1 | Project informatie | IfcProject bevat Name en LongName |
-| 2.2.7.2 | Terrein informatie | IfcSite met Name, RefLatitude, RefLongitude, RefElevation |
-| 2.2.7.3 | Gebouw informatie | IfcBuilding met Name en BuildingID (RVB-nummer) |
-| 2.2.7.4 | Bouwlaag naamgeving | Verdiepingen volgen RVB-patroon: "-01 Kelder", "00 BG", "01 Eerste", etc. |
-
-**Ruimtes & Zones (3 specs)**
-
-| Code | Specificatie | Wat wordt gecontroleerd |
-|------|-------------|------------------------|
-| 2.2.7.6a | Ruimte attributen | IfcSpace met Name, ObjectType, LongName en IsExternal |
-| 2.2.7.6b | Ruimte hoeveelheden | NetFloorArea, GrossFloorArea en Height in Qto_SpaceBaseQuantities |
-| 2.2.7.7 | Zone informatie | IfcZone met Name en ObjectType |
-
-**NL-SfB Classificatie (8 specs)**
-
-| Code | Specificatie | Wat wordt gecontroleerd |
-|------|-------------|------------------------|
-| 2.2.6.2a | NL-SfB Wanden | IfcWall met NL-SfB classificatie (21.xx) |
-| 2.2.6.2b | NL-SfB Vloeren | IfcSlab met NL-SfB classificatie (23.xx) |
-| 2.2.6.2c | NL-SfB Daken | IfcRoof met NL-SfB classificatie (27.xx) |
-| 2.2.6.2d | NL-SfB Deuren | IfcDoor met NL-SfB classificatie (31.xx) |
-| 2.2.6.2e | NL-SfB Ramen | IfcWindow met NL-SfB classificatie (31.xx) |
-| 2.2.6.2f | NL-SfB Kolommen | IfcColumn met NL-SfB classificatie (28.xx) |
-| 2.2.6.2g | NL-SfB Balken | IfcBeam met NL-SfB classificatie (28.xx) |
-| 2.2.6.2h | NL-SfB Trappen | IfcStair met NL-SfB classificatie (24.xx) |
-
-**Constructieve & Brandtechnische Eigenschappen (9 specs)**
-
-| Code | Specificatie | Wat wordt gecontroleerd |
-|------|-------------|------------------------|
-| 2.2.7.8a | Element materiaal | Alle bouwelementen hebben materiaal toegekend |
-| 2.2.7.8b | IsExternal wanden | Wanden hebben IsExternal property (Pset_WallCommon) |
-| 2.2.7.8.1a | FireRating wanden | Wanden hebben FireRating (brandwerendheid in minuten) |
-| 2.2.7.8.1b | FireRating deuren | Deuren hebben FireRating én SelfClosing property |
-| 2.2.7.8.1c | Vluchtdeuren | Deuren hebben FireExit property (TRUE/FALSE) |
-| 2.2.7.8.2a | LoadBearing wanden | Wanden hebben LoadBearing property (Pset_WallCommon) |
-| 2.2.7.8.2b | LoadBearing vloeren | Vloeren hebben LoadBearing property (Pset_SlabCommon) |
-| 2.2.7.8.2c | LoadBearing kolommen | Kolommen hebben LoadBearing property (Pset_ColumnCommon) |
-| 2.2.7.8.2d | LoadBearing balken | Balken hebben LoadBearing property (Pset_BeamCommon) |
-
-**Model Kwaliteit & Inventaris (3 specs)**
-
-| Code | Specificatie | Wat wordt gecontroleerd |
-|------|-------------|------------------------|
-| 2.1.4 | Vermijd IfcBuildingElementProxy | Geen proxy-elementen; gebruik correcte IFC-entiteiten |
-| 2.2.7.11 | Meubilair | IfcFurnishingElement met Name en NL-SfB classificatie |
-
-#### Technische Details
-
-- **IFC Versies:** IFC2X3 en IFC4
-- **Aantal specificaties:** 27 checks
-- **Bron:** Gebaseerd op [RVB BIM Norm v1.1](https://www.rijksvastgoedbedrijf.nl/) van het Rijksvastgoedbedrijf
-- **PropertySets:** Pset_WallCommon, Pset_SlabCommon, Pset_DoorCommon, Pset_BeamCommon, Pset_ColumnCommon, Pset_BuildingCommon, Pset_SpaceCommon, Qto_SpaceBaseQuantities
-
-#### Wanneer Gebruiken?
-
-Gebruik `--ids rvb` voor:
-- Projecten voor het Rijksvastgoedbedrijf (ministeries, gerechtsgebouwen, etc.)
-- Rijkshuisvestingsprojecten
-- Overheidsgebouwen met RVB-opdrachtgeverschap
-- Projecten waar uitgebreide locatie- en gebouwinformatie vereist is
-- BIM-modellen die aan RVB-inlevervoorwaarden moeten voldoen
-
-#### Vergelijking met NL_BIM Basis ILS
-
-| Aspect | NL_BIM Basis ILS | RVB BIM Norm |
-|--------|------------------|--------------|
-| Aantal checks | 12 | 27 |
-| Project/terrein info | Beperkt | Uitgebreid (coördinaten, RVB-nummer) |
-| NL-SfB classificatie | Algemeen | Per elementtype specifiek |
-| Constructieve props | Wanden alleen | Wanden, vloeren, kolommen, balken |
-| Brandtechnisch | FireRating wanden | FireRating + SelfClosing + FireExit |
-| Ruimte hoeveelheden | NetFloorArea | NetFloorArea + GrossFloorArea + Height |
-| Doelgroep | Algemeen bouwprojecten | Rijksvastgoed/overheid |
-
-### Welke Standaard Kiezen?
-
-| Situatie | Aanbevolen Standaard |
-|----------|---------------------|
-| Algemeen BIM-project in Nederland | `--ids nl-bim` |
-| Rijksvastgoedbedrijf / overheidsgebouwen | `--ids rvb` |
-| Eigen projectspecificaties | `--ids pad/naar/eigen.ids` |
-| Beide standaarden tegelijk controleren | Voer beide commands uit |
-
----
-
-## Praktische CLI Voorbeelden
-
-Deze sectie bevat copy-paste ready voorbeelden voor veelvoorkomende validatietaken. Alle voorbeelden werken direct na installatie.
-
-### Basisgebruik
-
-```bash
-# Valideer met NL_BIM Basis ILS (standaard console output)
-python -m ifc_validator.cli mijn_model.ifc --ids nl-bim
-
-# Valideer met RVB BIM Norm
-python -m ifc_validator.cli mijn_model.ifc --ids rvb
-
-# Korte optie (-i in plaats van --ids)
-python -m ifc_validator.cli mijn_model.ifc -i nl-bim
+De modelcontrole controleert ontbrekende namen/GUIDs, dubbele GUIDs, proxies en importmeldingen. De IDS-evaluator ondersteunt entity-, attribute-, property-, material- en classification-facetten met eenvoudige waarden, gebruikelijke patronen, enumeraties, numerieke grenzen en cardinaliteit. Niet-ondersteunde facetten/restricties worden expliciet gemeld. Dit is geen gecertificeerde IDS-implementatie: onder meer `partOf`, volledige XML-Schema-regexsemantiek, uitgebreide propertyvarianten en alle overervings-/eenheidsregels ontbreken nog. Gebruik deze versie dus niet om volledige IDS-conformiteit vast te stellen.
+
+Nog niet aanwezig: geavanceerde clashclustering, samenwerking via een server, Revit-koppeling, IFC-bewerking, doorsnedecaps en Solibri-regelsets. BCF verwerkt momenteel één viewpoint per topic; camera-roll en schuine geïmporteerde snijvlakken worden nog niet weergegeven. Meerdere viewpoints, documenten en kleurinstellingen uit externe BCF-bestanden worden niet volledig behouden. Kleurweergave is per IFC-type, niet op de oorspronkelijke IFC-oppervlaktestijl. Doorsneden zijn een weergave-instelling en wijzigen de meshes voor clashcontrole niet. Clashafstanden geven expliciet aan of ze op de mesh gemeten of uit begrenzingen geschat zijn. Er is nog geen benchmarkgarantie voor gigabyte-modellen of georeferenties met zeer grote coördinaten.
+
+## Data en exports
+
+Open **Data → Objecten**. Kies een IFC-type en propertykolom; activeer een kolomfilter voor tekst, aanwezigheid of een numerieke vergelijking. Resultaten zijn te selecteren of isoleren in 3D en te exporteren als CSV. De som telt numerieke bronwaarden zonder eenheidsconversie; controleer zelf dat de eenheden overeenkomen.
+
+Open beide revisies als afzonderlijk IFC-model en kies **Data → Versies**. De vergelijking gebruikt GlobalId, weigert dubbele GUIDs en slaat objecten zonder GUID over. Metadata en driehoeken worden vergeleken; geometrie wordt op een 1 mm raster gelegd. Een gewijzigde triangulatie kan daarom ook een geometrieverschil geven. Dit is geen volumetrische vergelijking.
+
+**Data → GLB** exporteert zichtbare objecten in meters, Y-up, met lokale coördinaten en de IFC-wereldorigin in scene-extras. De export gebruikt typekleuren; viewport-clipping wordt niet in de GLB-geometrie gesneden. **Data → 2D snede** gebruikt de opgegeven absolute Z-hoogte in meters en schrijft driehoek/snijlijnen als SVG, zonder arcering, maatvoering of gesloten contourreconstructie.
+
+![Modeldata gekoppeld aan 3D](docs/native-data.png)
+
+## Headless CLI
+
+Dezelfde Rust-binary werkt zonder grafisch venster voor `--inspect`, `--query`, `--validate`, `--diff`, `--glb` en `--section`. Gebruik `--help` voor argumenten. Bijvoorbeeld:
+
+```sh
+openaec-bim-validator --query model.ifc IfcWall
+openaec-bim-validator --diff oud.ifc nieuw.ifc
+openaec-bim-validator --glb model.ifc model.glb
+openaec-bim-validator --section model.ifc 1.2 snede.svg
 ```
 
-### Output Formaten
+JSON gaat naar stdout; importmeldingen naar stderr. `--validate` rapporteert basiskwaliteitsbevindingen en geeft alleen bij uitvoeringsfouten een fout-exitcode; beoordeel bevindingen in het JSON-resultaat. Export weigert bestaande uitvoerbestanden te overschrijven.
 
-```bash
-# Console output (standaard, voor snelle review)
-python -m ifc_validator.cli project.ifc --ids nl-bim --output console
+## Releases
 
-# JSON output (voor automatische verwerking)
-python -m ifc_validator.cli project.ifc --ids nl-bim --output json
+De huidige versie is **0.3.0-rc.1**. Zie [release-instructies](docs/RELEASE.md), [wijzigingen](release/NOTES.md) en het [LinkedIn-concept](release/LINKEDIN-NL.md). De releaseworkflow bouwt Linux x64, Windows x64 en macOS ARM64/x64. Dat een workflow is opgenomen betekent niet dat alle platformbuilds al zijn uitgevoerd; download alleen artifacts uit een geslaagde run. Ondertekening en notarization vereisen organisatiecertificaten.
 
-# HTML rapport (voor delen met projectteam)
-python -m ifc_validator.cli project.ifc --ids nl-bim --output html
+## Ontwikkeling
 
-# HTML rapport met aangepaste bestandsnaam
-python -m ifc_validator.cli project.ifc --ids rvb --output html --html-output validatie_rapport.html
+```sh
+cargo fmt --all --check
+cargo test --workspace --all-features --locked
+cargo clippy --workspace --all-features --all-targets --locked -- -D warnings
+cargo build --release --locked
 ```
 
-### Validatie Workflows
+Visuele smoke-test (echte desktop/OpenGL vereist):
 
-**Scenario 1: Snelle check voor oplevering**
-```bash
-# Controleer of model voldoet aan NL_BIM basis eisen
-python -m ifc_validator.cli oplevering_model.ifc --ids nl-bim
+```sh
+OPENAEC_SCREENSHOT_TO=/tmp/bim-viewer.png OPENAEC_SCREENSHOT_REVIEW=1 cargo run --features screenshot -- test/2786_CLT_model.ifc
+# Andere controlebeelden: OPENAEC_SCREENSHOT_REVIEW=settings, dark, issues, rules, data of scans
+# Kleinere desktop: voeg OPENAEC_SCREENSHOT_COMPACT=1 toe
 ```
 
-**Scenario 2: RVB-project validatie met rapport**
-```bash
-# Genereer officieel validatierapport voor RVB-oplevering
-python -m ifc_validator.cli rvb_project_v2.ifc --ids rvb --output html --html-output RVB_Validatie_Rapport.html
-```
+De Rust-bronnen staan in `native/src/`: modelimport, camera/picking, renderer, validatie, issuebeheer, BCF, pointcloudverwerking, rapportage, thema en desktop-UI zijn afzonderlijke modules. `Cargo.lock` legt de afhankelijkheden vast.
 
-**Scenario 3: Beide standaarden vergelijken**
-```bash
-# Valideer tegen beide Nederlandse standaarden
-python -m ifc_validator.cli gebouw.ifc --ids nl-bim --output json > nl_bim_resultaat.json
-python -m ifc_validator.cli gebouw.ifc --ids rvb --output json > rvb_resultaat.json
-```
-
-**Scenario 4: Meerdere modellen valideren (Windows PowerShell)**
-```powershell
-# Valideer alle IFC bestanden in een folder
-Get-ChildItem -Filter "*.ifc" | ForEach-Object {
-    Write-Host "Validating: $($_.Name)"
-    python -m ifc_validator.cli $_.FullName --ids nl-bim --output html
-}
-```
-
-**Scenario 5: Meerdere modellen valideren (Linux/Mac Bash)**
-```bash
-# Valideer alle IFC bestanden in een folder
-for file in *.ifc; do
-    echo "Validating: $file"
-    python -m ifc_validator.cli "$file" --ids nl-bim --output html
-done
-```
-
-### Werken met Eigen IDS Bestanden
-
-```bash
-# Gebruik een eigen/aangepast IDS bestand (backward compatible)
-python -m ifc_validator.cli model.ifc --ids mijn_specificaties.ids
-
-# Relatief pad naar IDS bestand
-python -m ifc_validator.cli model.ifc --ids specificaties/project_ids.ids
-
-# Absoluut pad (Windows)
-python -m ifc_validator.cli model.ifc --ids "C:\Projecten\IDS\custom.ids"
-
-# Absoluut pad (Linux/Mac)
-python -m ifc_validator.cli model.ifc --ids /home/user/ids/custom.ids
-```
-
-### Exit Codes voor Scripts
-
-De CLI retourneert exit codes die gebruikt kunnen worden in scripts:
-
-| Exit Code | Betekenis |
-|-----------|-----------|
-| `0` | ✅ Alle specificaties geslaagd |
-| `1` | ❌ Een of meer specificaties gefaald, of een fout opgetreden |
-
-**Voorbeeld: Conditionele workflow (Windows PowerShell)**
-```powershell
-python -m ifc_validator.cli model.ifc --ids nl-bim
-if ($LASTEXITCODE -eq 0) {
-    Write-Host "Model voldoet aan NL_BIM standaard!"
-} else {
-    Write-Host "Model voldoet NIET aan NL_BIM standaard. Check het rapport."
-}
-```
-
-**Voorbeeld: Conditionele workflow (Linux/Mac Bash)**
-```bash
-if python -m ifc_validator.cli model.ifc --ids nl-bim; then
-    echo "Model voldoet aan NL_BIM standaard!"
-else
-    echo "Model voldoet NIET aan NL_BIM standaard. Check het rapport."
-fi
-```
-
-### JSON Output Verwerken
-
-```bash
-# Sla JSON output op in bestand
-python -m ifc_validator.cli model.ifc --ids nl-bim --output json > validatie.json
-
-# Bekijk alleen failed specs met jq (Linux/Mac)
-python -m ifc_validator.cli model.ifc --ids nl-bim --output json | jq '.specifications[] | select(.status == "FAIL")'
-
-# Bekijk alleen failed specs met PowerShell (Windows)
-python -m ifc_validator.cli model.ifc --ids nl-bim --output json | ConvertFrom-Json | Select-Object -ExpandProperty specifications | Where-Object { $_.status -eq "FAIL" }
-```
-
-### Foutafhandeling
-
-```bash
-# Onbekende shortcut - toont beschikbare opties
-python -m ifc_validator.cli model.ifc --ids unknown
-# Output: Error: Unknown shortcut 'unknown'. Valid shortcuts are: nl-bim, rvb
-
-# Bestand niet gevonden
-python -m ifc_validator.cli niet_bestaand.ifc --ids nl-bim
-# Output: Error: IFC file not found: niet_bestaand.ifc
-
-# Versie tonen
-python -m ifc_validator.cli --version
-```
-
-### Voorbeeldcommando's voor Specifieke Projecttypen
-
-**Woningbouw:**
-```bash
-python -m ifc_validator.cli woningen_blok_a.ifc --ids nl-bim --output html --html-output Woningbouw_Validatie.html
-```
-
-**Rijkshuisvesting (ministeries, rechtbanken):**
-```bash
-python -m ifc_validator.cli ministerie_nieuwbouw.ifc --ids rvb --output html --html-output RVB_Oplevering_Rapport.html
-```
-
-**Utiliteitsbouw:**
-```bash
-python -m ifc_validator.cli kantoorgebouw.ifc --ids nl-bim --output json > kantoor_validatie.json
-```
-
-**Renovatieproject:**
-```bash
-# Controleer renovatiestatus van MEP-elementen (NL_BIM 4.8)
-python -m ifc_validator.cli renovatie_project.ifc --ids nl-bim
-```
-
----
-
-## Links
-
-- [IfcOpenShell](https://ifcopenshell.org/)
-- [ifctester Docs](https://docs.ifcopenshell.org/ifctester.html)
-- [That Open Engine](https://thatopen.com/)
-- [IDS Specification](https://technical.buildingsmart.org/projects/information-delivery-specification-ids/)
-- [BIM Loket - BIM Basis ILS](https://www.bimloket.nl/p/223/BIM-basis-ILS)
-- [RVB BIM Norm](https://www.rijksvastgoedbedrijf.nl/)
-
----
-
-© 2025 3BM Bouwkunde - Ingenieurs van oplossingen
+De eerdere React/Python-app blijft als migratiereferentie aanwezig in `viewer/`, `server/` en `src/`; deze wordt niet aangeroepen door de native app. De oude installatie- en CLI-documentatie staat in [docs/LEGACY-PYTHON.md](docs/LEGACY-PYTHON.md). De bestaande Dockerconfiguratie behoort tot die eerdere app.
