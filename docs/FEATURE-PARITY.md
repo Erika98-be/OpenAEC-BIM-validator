@@ -24,7 +24,7 @@ Referentie: [ClashControl](https://www.clashcontrol.io/tour/) en de [publieke re
 | Geocontext | RTC-origins voor geometrieprecisie | IfcMapConversion/ProjectedCRS, EPSG en kaartachtergrond |
 | Revit | Nog niet aanwezig | Connectorprotocol, model-/property-sync en issue-terugkoppeling; verificatie met Revit |
 | Samenwerking | Lokale projectbestanden | Projectcode, gedeelde topics, conflictbehandeling en synchronisatie |
-| AI / integraties | Nog niet aanwezig | Optionele provider, toolcommando's, triage en MCP; expliciete configuratie voor extern dataverkeer |
+| AI / integraties | Native MCP stdio/HTTP en REST API met tien tools; UI-serverbeheer en viewerselectie | AI-provider, scripting, triage en overige UI-acties via API |
 | Extensions | Style-referentie onderzocht | Native register, installatiecontract, versie-/compatibiliteitscontrole; geen fictieve catalogus |
 | Offline desktop | Rust-binary, geen webview | Releasepakketten per platform en installatieverificatie |
 
@@ -44,7 +44,7 @@ Referentie: [IfcLite README](https://github.com/LTplus-AG/ifc-lite) en de [docum
 | Lens / kleurregels | Typekleuren en zichtbaarheid | Property-gestuurde kleuren, legenda, bewaarde regelsets |
 | IDS en BCF | Zie de beperkingen in bovenstaande matrix | Volledige standaarden/dekking |
 | IFC authoring | Niet aanwezig | Entiteiten/geometrie aanmaken, relaties en schema-veilige export |
-| SDK / scripts / MCP | Niet aanwezig | Native commando-API, scriptingomgeving, MCP-server |
+| SDK / scripts / MCP | REST/OpenAPI en MCP stdio/HTTP via officiële Rust-SDK; tien tools, native beheer/testpaneel | Scriptingomgeving en API-dekking voor issues/scans/projecten |
 | IFCX collaboration | Niet aanwezig | IFCX-datamodel, CRDT, server en conflict-/reconnecttests |
 | Extensions | Geen uitvoerbare runtime | Manifestcontract, installatie, versiecontrole, native API |
 | AI | Niet aanwezig | Expliciete lokale/providerconfiguratie en geteste toolaanroepen |
@@ -61,6 +61,7 @@ Referentie: [IfcLite README](https://github.com/LTplus-AG/ifc-lite) en de [docum
 | Controleren | Clashregels, kwaliteit, IDS, zichtlijn | Aanklikbare bevindingen |
 | Issues | Beoordelen, eigenaar, opmerkingen, BCF | Vast onderpaneel met topiclijst/editor |
 | Scans | Registratie, ICP en afwijkingen | Rechterpaneel naast IFC/scan-weergave |
+| API / MCP | Server starten, clientconfiguratie, tools testen en activiteiten bekijken | Rechterpaneel met live verbinding naar dezelfde modellen/selectie |
 
 Configuratiedialogen (bijvoorbeeld clashregels en IDS XML) zijn tijdelijk; modeldata, issues en scans zijn vaste werkpanelen. Niet-geïmplementeerde integraties krijgen geen schijnbaar werkende knop.
 

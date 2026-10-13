@@ -57,6 +57,12 @@ jobs:
       - run: cargo test --workspace --all-features --locked --target ${{ matrix.target }}
       - run: cargo clippy --workspace --all-features --all-targets --locked --target ${{ matrix.target }} -- -D warnings
       - run: cargo build --release --locked --target ${{ matrix.target }}
+      - name: Black-box protocol tests (Unix)
+        if: runner.os != 'Windows'
+        run: python scripts/test-native-protocols.py target/${{ matrix.target }}/release/openaec-bim-validator
+      - name: Black-box protocol tests (Windows)
+        if: runner.os == 'Windows'
+        run: python scripts/test-native-protocols.py target/${{ matrix.target }}/release/openaec-bim-validator.exe
       - name: Stage application and notices
         run: python scripts/package-native.py --target ${{ matrix.target }} --stage-only
       - name: Authenticode sign and verify

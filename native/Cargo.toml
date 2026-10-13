@@ -28,3 +28,13 @@ image = { version = "0.25", default-features = false, features = ["png"], option
 ifc-lite-clash = "=20.4.0"
 pointcloud-core = { git = "https://github.com/OpenAEC-Foundation/open-pointcloud-studio", rev = "13b199a426e692d2149998b3f2f596a191568501" }
 nalgebra = "0.35"
+axum = "=0.8.9"
+tokio = { version = "=1.53.3", features = ["rt-multi-thread", "net", "signal", "sync", "time", "macros"] }
+tokio-util = "0.7"
+rmcp = { version = "=3.5.1", default-features = false, features = ["server", "transport-io", "transport-streamable-http-server"] }
+base64 = "0.22"
+schemars = "1"
+reqwest = { version = "0.12", default-features = false, features = ["json", "blocking", "rustls-tls"] }
+
+[dev-dependencies]
+rmcp = { version = "=3.5.1", default-features = false, features = ["client"] }

@@ -33,6 +33,7 @@ pub struct Mesh {
     pub max: DVec3,
     pub color: [f32; 3],
 }
+#[derive(Clone)]
 pub struct Model {
     pub name: String,
     pub path: PathBuf,

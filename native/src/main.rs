@@ -13,6 +13,7 @@ mod pointcloud;
 mod quality;
 mod renderer;
 mod report;
+mod service;
 mod theme;
 mod validation;
 mod view_cube;

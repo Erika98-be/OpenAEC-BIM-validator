@@ -43,3 +43,11 @@ Zie [FEATURE-PARITY.md](FEATURE-PARITY.md). Nieuwe coördinatiefuncties krijgen 
 `export.rs` schrijft GLB 2.0 met Y-up coördinaten en behoudt de IFC-world-origin in scene-extras. SVG-export snijdt driehoeken op een absolute Z-hoogte. Beide gebruiken de zichtbaarheid van objecten; viewport-clipping wordt niet op GLB-meshes toegepast.
 
 `scripts/package-native.py` assembleert uitsluitend build-artifacts. De app heeft geen Python-runtime nodig. De releaseworkflow bouwt op elk doelplatform, voert tests/Clippy uit, ondertekent Windows/macOS en genereert build-provenance voor de archieven. Ontbrekende signingsecrets blokkeren tagged releases.
+
+## API/MCP-service
+
+`service/mod.rs` is de gedeelde uitvoering voor REST en MCP. De modellen worden gepubliceerd als een immutable Arc-snapshot met revisie. De desktop publiceert een nieuwe snapshot bij import/sluiten; clients kunnen geen willekeurige bestanden openen. Zware berekeningen gebruiken maximaal twee Tokio blocking workers. Selectieaanroepen gaan via een begrensde wachtrij en worden op de egui-thread toegepast, met revisiecontrole.
+
+`service/http.rs` levert een loopback-only Axum API, bearer-authenticatie, Host/Origin-validatie, bodylimiet, OpenAPI en tijdelijke exportdownloads. `service/mcp.rs` gebruikt rmcp voor protocolonderhandeling, tools en stdio/Streamable HTTP. Er is geen zelfgebouwde JSON-RPC-parser. `app/server_ui.rs` beheert de serverthread, status, token/configuratie, echte HTTP-testaanroepen en activiteiten. Tokens blijven alleen in geheugen.
+
+Protocollen zijn getest op drie niveaus: native operations, echte HTTP + officiële MCP-client, en black-box subprocess-tests van de binary. De native screenshotcontrole gebruikt een echte HTTP-query en selectieopdracht en controleert dat de viewer die laatste heeft toegepast.

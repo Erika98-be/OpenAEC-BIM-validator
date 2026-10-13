@@ -1,4 +1,5 @@
 mod data_ui;
+mod server_ui;
 use crate::{
     camera::{self, Camera},
     model::Model,
@@ -72,6 +73,7 @@ enum Import {
     Done,
 }
 pub struct BimApp {
+    api: server_ui::ApiUi,
     query: crate::data::Query,
     data_column: String,
     export_height: f64,
@@ -176,6 +178,7 @@ impl BimApp {
             registration_source: [DVec3::ZERO, DVec3::X, DVec3::Y],
             registration_target: [DVec3::ZERO, DVec3::X, DVec3::Y],
             topics: vec![],
+            api: Default::default(),
             query: Default::default(),
             data_column: "Material".into(),
             export_height: 1.2,
@@ -306,6 +309,38 @@ impl BimApp {
                                 app.cloud_window = true;
                                 app.tab = 6;
                             }
+                            if std::env::var("OPENAEC_SCREENSHOT_REVIEW").as_deref() == Ok("mcp") {
+                                app.tab = 7;
+                                app.api.port = 0;
+                                app.server_toggle();
+                                app.api.page = 1;
+                                app.api.tool = 1;
+                                app.api.args = r#"{"model":0,"class":"IfcWall","limit":3}"#.into();
+                                if let Some(server) = &app.api.server {
+                                    let response = reqwest::blocking::Client::builder()
+                                        .no_proxy()
+                                        .timeout(std::time::Duration::from_secs(10))
+                                        .build()
+                                        .unwrap()
+                                        .post(format!(
+                                            "http://{}/api/v1/tools/objects_query",
+                                            server.address
+                                        ))
+                                        .bearer_auth(&app.api.token)
+                                        .header("content-type", "application/json")
+                                        .body(app.api.args.clone())
+                                        .send()
+                                        .unwrap();
+                                    app.api.result = serde_json::to_string_pretty(
+                                        &response.json::<serde_json::Value>().unwrap(),
+                                    )
+                                    .unwrap();
+                                    let first = app.models[0].meshes[0].id;
+                                    app.selected.clear();
+                                    let response=reqwest::blocking::Client::builder().no_proxy().build().unwrap().post(format!("http://{}/api/v1/tools/view_select",server.address)).bearer_auth(&app.api.token).json(&serde_json::json!({"revision":server.service.snapshot().revision,"objects":[{"model":0,"element":first}],"focus":false})).send().unwrap();
+                                    assert!(response.status().is_success());
+                                }
+                            }
                             if std::env::var("OPENAEC_SCREENSHOT_REVIEW").as_deref() == Ok("dark") {
                                 app.prefs.dark = true;
                                 theme::apply(&cc.egui_ctx, true);
@@ -428,6 +463,7 @@ impl BimApp {
                         .unwrap()
                         .upload(&self.gl, self.models.len(), &model);
                     self.models.push(model);
+                    self.server_sync();
                     self.tab = 2;
                     self.recalculate_bounds();
                     if self.pending_view.is_none() {
@@ -577,6 +613,7 @@ impl BimApp {
         self.clouds.clear();
         self.renderer.lock().unwrap().clear(&self.gl);
         self.models.clear();
+        self.server_sync();
         self.selected.clear();
         self.hidden.clear();
         self.results.clear();
@@ -1198,6 +1235,8 @@ impl BimApp {
             self.topics_open = false;
         }
         match command {
+            "api-panel" => self.tab = 7,
+            "api-toggle" => self.server_toggle(),
             "export-glb" | "export-svg" => {
                 let hidden = self.expand(&self.hidden);
                 let result = if command == "export-glb" {
@@ -1487,6 +1526,7 @@ impl BimApp {
                         (3, "Controleren"),
                         (4, "Issues"),
                         (6, "Scans"),
+                        (7, "API / MCP"),
                     ] {
                         if w::tab(ui, label, self.tab == i && !self.file_menu).clicked() {
                             self.tab = i;
@@ -1684,6 +1724,18 @@ impl BimApp {
                                             ],
                                         ),
                                     ],
+                                    7 => vec![(
+                                        "VERBINDING",
+                                        vec![
+                                            ("API / MCP", Settings, "api-panel", true),
+                                            (
+                                                "Start / stop",
+                                                Eye,
+                                                "api-toggle",
+                                                self.api.server.is_some(),
+                                            ),
+                                        ],
+                                    )],
                                     6 => vec![
                                         (
                                             "SCANS",
@@ -1744,7 +1796,7 @@ impl BimApp {
                                         let enabled = match cmd {
                                             "import" | "open" => self.rx.is_none(),
                                             "bcf-import" | "issues" | "new-issue"
-                                            | "cloud-tools" => true,
+                                            | "cloud-tools" | "api-panel" | "api-toggle" => true,
                                             "cloud-import" => self.cloud_rx.is_none(),
                                             "bcf" => {
                                                 !self.topics.is_empty() || !self.models.is_empty()
@@ -1822,11 +1874,13 @@ impl BimApp {
             )
             .show(ctx, |ui| {
                 ui.horizontal(|ui| {
+                    let compact = ui.available_width() < 400.;
                     let plan = self.camera.pitch > 1.5;
-                    if w::tab(ui, "Coördinatie · 3D", !plan).clicked() {
+                    if w::tab(ui, if compact { "3D" } else { "Coördinatie · 3D" }, !plan).clicked()
+                    {
                         self.command("orbit", ctx);
                     }
-                    if w::tab(ui, "Bovenaanzicht", plan).clicked() {
+                    if w::tab(ui, if compact { "Boven" } else { "Bovenaanzicht" }, plan).clicked() {
                         self.command("top", ctx);
                     }
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -3190,6 +3244,7 @@ fn valid_view(v: &View) -> bool {
 impl eframe::App for BimApp {
     fn update(&mut self, ctx: &egui::Context, _frame: &mut eframe::Frame) {
         self.poll();
+        self.server_poll();
         for event in ctx.input(|i| i.events.clone()) {
             if let egui::Event::Screenshot {
                 image, user_data, ..
@@ -3235,6 +3290,20 @@ impl eframe::App for BimApp {
                         image::ColorType::Rgba8,
                     ) {
                         eprintln!("Screenshot mislukt: {e}");
+                    }
+                    if std::env::var("OPENAEC_SCREENSHOT_REVIEW").as_deref() == Ok("mcp") {
+                        let state = self
+                            .api
+                            .server
+                            .as_ref()
+                            .expect("MCP review server")
+                            .service
+                            .state
+                            .lock()
+                            .unwrap();
+                        assert_eq!(state.last_selection.as_ref().unwrap()["status"], "applied");
+                        assert!(!self.selected.is_empty());
+                        eprintln!("MCP_UI_REVIEW: HTTP query succeeded; queued selection applied in desktop; {} selected",self.selected.len());
                     }
                     ctx.send_viewport_cmd(egui::ViewportCommand::Close);
                 }
@@ -3286,17 +3355,18 @@ impl eframe::App for BimApp {
             }
         }
         self.chrome(ctx);
+        self.server_panel(ctx);
         self.data_panel(ctx);
         self.issue_editor(ctx);
         self.cloud_tools(ctx);
         if self.left_open {
             self.tree(ctx);
         }
-        if self.right_open && !self.cloud_window {
+        if self.right_open && !self.cloud_window && self.tab != 7 {
             self.inspector(ctx);
         }
         self.document_bar(ctx);
-        if self.tab != 5 && self.tab != 6 && !self.topics_open {
+        if self.tab != 5 && self.tab != 6 && self.tab != 7 && !self.topics_open {
             self.results_panel(ctx);
         }
         self.viewport(ctx);
@@ -3336,7 +3406,12 @@ impl eframe::App for BimApp {
                     ui.label("IfcLite vergelijkt de zichtbare meshes…");
                 });
         }
-        if self.rx.is_some() || self.clash_rx.is_some() || self.cloud_rx.is_some() {
+        if self.rx.is_some()
+            || self.clash_rx.is_some()
+            || self.cloud_rx.is_some()
+            || self.api.server.is_some()
+            || self.api.rx.is_some()
+        {
             ctx.request_repaint_after(std::time::Duration::from_millis(100));
         }
     }

@@ -11,6 +11,7 @@ Wat er nu werkt:
 • Issues beheren en uitwisselen via BCF 2.1/3.0.
 • Puntenwolken registreren en afwijkingen ten opzichte van IFC onderzoeken.
 • 3D-geometrie naar GLB en horizontale doorsneden naar SVG exporteren.
+• Andere tools verbinden via de lokale API en MCP-server, met beheer en testen in de app.
 
 De richting is een samenhangende, open BIM-werkplek. Dit is een releasecandidate: volledige IDS-dekking, gedeelde projecten, Revit-integratie en de overige functionaliteit van ClashControl en IfcLite zijn nog in ontwikkeling.
 

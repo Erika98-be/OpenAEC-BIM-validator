@@ -11,7 +11,38 @@ pub fn run(args: &[String]) -> Option<Result<(), String>> {
     Some(execute(command, &args[1..]))
 }
 fn execute(command: &str, args: &[String]) -> Result<(), String> {
-    const HELP:&str="OpenAEC BIM Validator\n  <model.ifc>                         Desktop openen\n  --inspect <model.ifc>                JSON modelinformatie\n  --query <model.ifc> [IfcType]         JSON objecten en properties\n  --validate <model.ifc>               JSON basiskwaliteitsbevindingen\n  --diff <oud.ifc> <nieuw.ifc>          JSON revisieverschillen\n  --glb <model.ifc> <uitvoer.glb>       3D-export\n  --section <model.ifc> <z-m> <uitvoer.svg>  Horizontale snede\nBestaande uitvoerbestanden worden niet overschreven.";
+    if command == "--mcp" || command == "--api" {
+        let (port, paths) = if command == "--api" {
+            let port = args
+                .first()
+                .ok_or("Gebruik: --api <poort> [model.ifc ...]")?
+                .parse::<u16>()
+                .map_err(|_| "Ongeldige poort")?;
+            (port, &args[1..])
+        } else {
+            (0, args)
+        };
+        let models = paths
+            .iter()
+            .map(|p| Model::load(Path::new(p), |_| {}))
+            .collect::<Result<Vec<_>, _>>()?;
+        let service = crate::service::Service::new(models, false);
+        if command == "--mcp" {
+            let runtime = tokio::runtime::Runtime::new().map_err(|e| e.to_string())?;
+            return runtime.block_on(crate::service::mcp::stdio(service));
+        }
+        let token = std::env::var("OPENAEC_API_TOKEN")
+            .map_err(|_| "Stel OPENAEC_API_TOKEN in (minimaal 24 tekens)")?;
+        let mut server = crate::service::http::Server::start(port, token, service)?;
+        eprintln!("OpenAEC API http://{} · MCP /mcp", server.address);
+        tokio::runtime::Runtime::new()
+            .map_err(|e| e.to_string())?
+            .block_on(tokio::signal::ctrl_c())
+            .map_err(|e| e.to_string())?;
+        server.stop.cancel();
+        return server.join();
+    }
+    const HELP:&str="OpenAEC BIM Validator\n  --api <poort> [model.ifc ...]        Lokale REST + MCP HTTP-server\n  --mcp [model.ifc ...]                MCP stdio-server\n  <model.ifc>                         Desktop openen\n  --inspect <model.ifc>                JSON modelinformatie\n  --query <model.ifc> [IfcType]         JSON objecten en properties\n  --validate <model.ifc>               JSON basiskwaliteitsbevindingen\n  --diff <oud.ifc> <nieuw.ifc>          JSON revisieverschillen\n  --glb <model.ifc> <uitvoer.glb>       3D-export\n  --section <model.ifc> <z-m> <uitvoer.svg>  Horizontale snede\nBestaande uitvoerbestanden worden niet overschreven.";
     if command == "--help" {
         println!("{HELP}");
         return Ok(());

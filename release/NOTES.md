@@ -17,10 +17,11 @@ Native IFC-coördinatie in Rust, met IfcLite 20.4.0 en OpenAEC-vormgeving. Deze 
 - LAS/LAZ/PLY/PCD/XYZ/PTS/PTX/E57-scans, registratie/ICP, afwijkingsheatmap, clusterissues en PDF-overzicht.
 - Lokale projectbestanden en standpunten; licht/donker thema.
 - Headless CLI voor inspectie, queries, basiskwaliteitscontrole, revisievergelijking en GLB/SVG-export.
+- Lokale REST/OpenAPI API en MCP-server (stdio + Streamable HTTP), inclusief native beheer, tooltester, activiteitenlog en gekoppelde viewerselectie.
 
 ## Grenzen van deze candidate
 
-Dit is nog geen volledige overname van ClashControl of IfcLite. IFC-propertybewerking/undo/STEP-export, IFCX/CRDT, SQL, scripting/MCP/AI, Revit-connector, gedeelde projecten en extension-runtime ontbreken. IDS en BCF hebben gedeeltelijke dekking. Scans gebruiken maximaal 2 miljoen steekproefpunten. Revisievergelijking detecteert triangulatieverschillen en is geen volumetrische vergelijking. Bekijk [de volledige functiematrix](https://github.com/OpenAEC-Foundation/OpenAEC-BIM-validator/blob/master/docs/FEATURE-PARITY.md).
+Dit is nog geen volledige overname van ClashControl of IfcLite. IFC-propertybewerking/undo/STEP-export, IFCX/CRDT, SQL, scripting/AI, Revit-connector, gedeelde projecten en extension-runtime ontbreken. IDS en BCF hebben gedeeltelijke dekking. Scans gebruiken maximaal 2 miljoen steekproefpunten. Revisievergelijking detecteert triangulatieverschillen en is geen volumetrische vergelijking. Bekijk [de volledige functiematrix](https://github.com/OpenAEC-Foundation/OpenAEC-BIM-validator/blob/master/docs/FEATURE-PARITY.md).
 
 ## Installatie en verificatie
 

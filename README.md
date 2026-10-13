@@ -26,7 +26,7 @@ Linux vereist een grafische desktop, OpenGL 3.3, de X11/Wayland runtimebibliothe
 
 ## Werkruimte
 
-De bovenbalk groepeert acties in **Model → Beeld → Data → Controleren → Issues → Scans**. De 3D-weergave, modelboom en inspecteur delen één selectie. Data en issues gebruiken een vast onderpaneel; scans staan rechts. De gewone systeemtitelbalk, het Bestand-menu en native bestandsdialogen blijven behouden.
+De bovenbalk groepeert acties in **Model → Beeld → Data → Controleren → Issues → Scans → API / MCP**. De 3D-weergave, modelboom en inspecteur delen één selectie. Data en issues gebruiken een vast onderpaneel; scans staan rechts. De gewone systeemtitelbalk, het Bestand-menu en native bestandsdialogen blijven behouden.
 
 
 - Meerdere lokale IFC-modellen combineren; import op een achtergrondthread met voortgang en foutmeldingen.
@@ -121,6 +121,23 @@ openaec-bim-validator --section model.ifc 1.2 snede.svg
 
 JSON gaat naar stdout; importmeldingen naar stderr. `--validate` rapporteert basiskwaliteitsbevindingen en geeft alleen bij uitvoeringsfouten een fout-exitcode; beoordeel bevindingen in het JSON-resultaat. Export weigert bestaande uitvoerbestanden te overschrijven.
 
+## API en MCP, inclusief desktopbeheer
+
+Open **API / MCP** om de lokale server te starten/stoppen, een clientconfiguratie te kopiëren, tools via HTTP te testen en aanroepen te bekijken. Verbonden clients zien de geladen modellen; objectselecties kunnen direct in de viewer worden toegepast.
+
+Dezelfde binary biedt REST/JSON met OpenAPI 3.1, MCP Streamable HTTP en MCP stdio. Tien tools dekken modelinformatie, objectfilters/properties, kwaliteit/IDS, clashes, modelvergelijking, exports en viewerselectie. Alle HTTP-routes gebruiken een token en luisteren alleen op deze computer. De MCP-implementatie gebruikt de officiële Rust-SDK.
+
+```sh
+# Headless MCP voor een client die child processes start:
+openaec-bim-validator --mcp model.ifc
+# REST + MCP HTTP (OPENAEC_API_TOKEN eerst instellen):
+openaec-bim-validator --api 19781 model.ifc
+```
+
+Zie [API/MCP-handleiding, routes, tools en limieten](docs/API-MCP.md).
+
+![API en MCP beheren in de native app](docs/native-mcp.png)
+
 ## Releases
 
 De huidige versie is **0.3.0-rc.1**. Zie [release-instructies](docs/RELEASE.md), [wijzigingen](release/NOTES.md) en het [LinkedIn-concept](release/LINKEDIN-NL.md). De releaseworkflow bouwt Linux x64, Windows x64 en macOS ARM64/x64. Dat een workflow is opgenomen betekent niet dat alle platformbuilds al zijn uitgevoerd; download alleen artifacts uit een geslaagde run. Ondertekening en notarization vereisen organisatiecertificaten.
@@ -132,13 +149,14 @@ cargo fmt --all --check
 cargo test --workspace --all-features --locked
 cargo clippy --workspace --all-features --all-targets --locked -- -D warnings
 cargo build --release --locked
+python3 scripts/test-native-protocols.py target/release/openaec-bim-validator
 ```
 
 Visuele smoke-test (echte desktop/OpenGL vereist):
 
 ```sh
 OPENAEC_SCREENSHOT_TO=/tmp/bim-viewer.png OPENAEC_SCREENSHOT_REVIEW=1 cargo run --features screenshot -- test/2786_CLT_model.ifc
-# Andere controlebeelden: OPENAEC_SCREENSHOT_REVIEW=settings, dark, issues, rules, data of scans
+# Andere controlebeelden: OPENAEC_SCREENSHOT_REVIEW=settings, dark, issues, rules, data, scans of mcp
 # Kleinere desktop: voeg OPENAEC_SCREENSHOT_COMPACT=1 toe
 ```
 

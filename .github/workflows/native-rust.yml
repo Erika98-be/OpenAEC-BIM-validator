@@ -1,9 +1,9 @@
 name: Native Rust viewer
 on:
   push:
-    paths: ['native/**', 'Cargo.toml', 'Cargo.lock', 'test/fixtures/**', '.github/workflows/native-rust.yml']
+    paths: ['native/**', 'Cargo.toml', 'Cargo.lock', 'test/fixtures/**', 'scripts/test-native-protocols.py', '.github/workflows/native-rust.yml']
   pull_request:
-    paths: ['native/**', 'Cargo.toml', 'Cargo.lock', 'test/fixtures/**', '.github/workflows/native-rust.yml']
+    paths: ['native/**', 'Cargo.toml', 'Cargo.lock', 'test/fixtures/**', 'scripts/test-native-protocols.py', '.github/workflows/native-rust.yml']
   workflow_dispatch:
 permissions:
   contents: read
@@ -20,6 +20,7 @@ jobs:
       - run: cargo test --workspace --all-features --locked
       - run: cargo clippy --workspace --all-features --all-targets --locked -- -D warnings
       - run: cargo build --release --locked
+      - run: python3 scripts/test-native-protocols.py target/release/openaec-bim-validator
       - uses: actions/upload-artifact@v4
         with:
           name: openaec-bim-validator-linux
