@@ -56,6 +56,8 @@ if not a.archive_only:
     for file in ['README.md', 'docs/FEATURE-PARITY.md', 'docs/RELEASE.md', 'release/NOTES.md']:
         shutil.copy2(ROOT / file, stage / pathlib.Path(file).name)
     shutil.copytree(ROOT / 'native/assets', stage / 'licenses-and-assets')
+    shutil.copytree(ROOT / 'docs', stage / 'docs')
+    shutil.copytree(ROOT / 'release', stage / 'release')
     metadata = json.loads(subprocess.check_output(['cargo', 'metadata', '--locked', '--format-version', '1'], cwd=ROOT))
     inventory = [{'name': pkg['name'], 'version': pkg['version'], 'license': pkg['license'], 'source': pkg['source'], 'repository': pkg.get('repository')} for pkg in metadata['packages']]
     (stage / 'DEPENDENCIES.json').write_text(json.dumps(inventory, indent=2) + '\n')
